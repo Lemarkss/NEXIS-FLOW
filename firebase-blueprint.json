@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user-specific settings and profile information.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string", "description": "User's display name from Auth." },
+        "email": { "type": "string", "format": "email", "description": "User's email address." },
+        "photoURL": { "type": "string", "description": "User's profile picture URL." },
+        "budgetGoal": { "type": "number", "description": "User's monthly budget goal." },
+        "role": { "type": "string", "enum": ["user", "premium", "admin"], "description": "User's access role." }
+      },
+      "required": ["displayName", "email", "role"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "A financial expense record.",
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string", "enum": ["Comida", "Transporte", "Moradia", "Trabalho", "Lazer", "Outro"] },
+        "date": { "type": "string", "format": "date" },
+        "uid": { "type": "string", "description": "Owner's user ID." }
+      },
+      "required": ["description", "amount", "category", "date", "uid"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A professional project record.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string", "enum": ["Planejamento", "Em Progresso", "Concluído"] },
+        "lastModified": { "type": "string", "format": "date-time" },
+        "uid": { "type": "string", "description": "Owner's user ID." },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "text": { "type": "string" },
+              "completed": { "type": "boolean" }
+            }
+          }
+        }
+      },
+      "required": ["title", "content", "status", "lastModified", "uid"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents."
+    },
+    "users/{userId}/expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "User's expenses collection."
+    },
+    "users/{userId}/projects/{projectId}": {
+      "schema": "Project",
+      "description": "User's projects collection."
+    }
+  }
+}

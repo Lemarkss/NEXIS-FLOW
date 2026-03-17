@@ -36,7 +36,7 @@ export default function Calculator() {
       <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl"></div>
       <div className="mb-8 text-right relative z-10">
         <div className="text-zinc-500 text-sm font-bold tracking-widest h-6 overflow-hidden uppercase">{equation || 'Pronto'}</div>
-        <div className="text-white text-6xl font-black tracking-tighter truncate mt-2">{display}</div>
+        <div className="text-white text-3xl md:text-5xl font-black tracking-tighter mt-2 break-all text-right leading-none">{display}</div>
       </div>
       <div className="grid grid-cols-4 gap-3 relative z-10">
         <button onClick={clear} className="col-span-2 bg-zinc-800/50 text-zinc-300 p-5 rounded-3xl hover:bg-zinc-700 transition-all font-bold text-lg border border-white/5">AC</button>

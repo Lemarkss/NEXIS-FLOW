@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}
+    // Fields:
+    //   - displayName: string (required)
+    //   - email: string (required, email format)
+    //   - photoURL: string (optional)
+    //   - budgetGoal: number (optional)
+    //   - role: string (required, ['user', 'admin'])
+    //
+    // Collection: users/{userId}/expenses/{expenseId}
+    // Fields:
+    //   - description: string (required, 1-100 chars)
+    //   - amount: number (required, positive)
+    //   - category: string (required, enum)
+    //   - date: string (required, YYYY-MM-DD)
+    //   - uid: string (required, matches owner)
+    //
+    // Collection: users/{userId}/projects/{projectId}
+    // Fields:
+    //   - title: string (required, 1-100 chars)
+    //   - content: string (required, 1-1000 chars)
+    //   - status: string (required, enum)
+    //   - lastModified: string (required, ISO 8601)
+    //   - uid: string (required, matches owner)
+    //   - tasks: list (optional, max 50 items)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "lemarksss321@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}$");
+    }
+
+    function isValidDateTimeString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['displayName', 'email', 'role']) &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             isValidEmail(data.email) &&
+             data.role in ['user', 'premium', 'admin'] &&
+             (!('budgetGoal' in data) || data.budgetGoal is number) &&
+             (!('photoURL' in data) || data.photoURL is string);
+    }
+
+    function isValidExpense(data) {
+      return data.keys().hasAll(['description', 'amount', 'category', 'date', 'uid']) &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 100 &&
+             data.amount is number && data.amount >= 0 &&
+             data.category in ['Comida', 'Transporte', 'Moradia', 'Trabalho', 'Lazer', 'Outro'] &&
+             isValidDateString(data.date) &&
+             data.uid == request.auth.uid;
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['title', 'content', 'status', 'lastModified', 'uid']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.content is string && data.content.size() > 0 && data.content.size() < 2000 &&
+             data.status in ['Planejamento', 'Em Progresso', 'Concluído'] &&
+             isValidDateTimeString(data.lastModified) &&
+             data.uid == request.auth.uid &&
+             (!('tasks' in data) || (data.tasks is list && data.tasks.size() <= 50));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && 
+                       (request.resource.data.role == resource.data.role || request.resource.data.role == 'premium')) || 
+                    isAdmin();
+      
+      match /expenses/{expenseId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidExpense(request.resource.data);
+        allow update: if isOwner(userId) && isValidExpense(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /projects/{projectId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidProject(request.resource.data);
+        allow update: if isOwner(userId) && isValidProject(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    match /config/stripe {
+      allow read, write: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
